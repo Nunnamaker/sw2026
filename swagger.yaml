@@ -1,0 +1,202 @@
+openapi: 3.0.3
+info:
+  title: sw2026 E-commerce API
+  description: REST API for user authentication and checkout (cash or credit card).
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api
+tags:
+  - name: Auth
+  - name: Checkout
+  - name: Health
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200':
+          description: API is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Missing required fields
+        '409':
+          description: Username already exists
+
+  /login:
+    post:
+      tags: [Auth]
+      summary: Login and receive a JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+
+  /checkout:
+    post:
+      tags: [Checkout]
+      summary: Checkout an order (requires authentication)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      responses:
+        '200':
+          description: Order processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+        '400':
+          description: Invalid request (e.g. invalid payment method or quantity)
+        '401':
+          description: Missing or invalid token
+        '404':
+          description: Product not found
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [username, password, name]
+      properties:
+        username:
+          type: string
+          example: newuser
+        password:
+          type: string
+          format: password
+          example: Password123!
+        name:
+          type: string
+          example: New User
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 4
+        username:
+          type: string
+          example: newuser
+        name:
+          type: string
+          example: New User
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: jdoe
+        password:
+          type: string
+          format: password
+          example: Password123!
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    CheckoutRequest:
+      type: object
+      required: [items, paymentMethod]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [productId, quantity]
+            properties:
+              productId:
+                type: integer
+                example: 1
+              quantity:
+                type: integer
+                example: 2
+        paymentMethod:
+          type: string
+          enum: [cash, credit_card]
+          example: cash
+
+    CheckoutResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: integer
+              name:
+                type: string
+              unitPrice:
+                type: number
+              quantity:
+                type: integer
+              subtotal:
+                type: number
+        paymentMethod:
+          type: string
+        subtotal:
+          type: number
+        discount:
+          type: number
+        total:
+          type: number
